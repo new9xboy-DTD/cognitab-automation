@@ -1,0 +1,4 @@
+# Core dependencies
+# Add your dependencies here, for example:
+# pyautogui>=0.9.53
+# opencv-python>=4.5.0
