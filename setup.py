@@ -18,7 +18,6 @@ setup(
     name="cognitab-automation",
     version="0.1.0",
     author="new9xboy",
-    author_email="",
     description="A Python library for automated clicking methods",
     long_description=long_description,
     long_description_content_type="text/markdown",
