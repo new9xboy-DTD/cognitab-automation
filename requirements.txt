@@ -2,3 +2,4 @@
 # Add your dependencies here, for example:
 # pyautogui>=0.9.53
 # opencv-python>=4.5.0
+psutil>=7.2.1
