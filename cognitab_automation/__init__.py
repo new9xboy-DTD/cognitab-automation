@@ -11,9 +11,20 @@ __license__ = "MIT"
 # Import main modules here when they are created
 # from .clicker import AutoClicker
 # from .utils import ClickUtils
+from .adb import Device, get_devices
+from .config import Config
+from .match import Match
+from .region import Region
+from .point import Point
 
 __all__ = [
     "__version__",
     "__author__",
     "__license__",
+    "Device",
+    "get_devices",
+    "Config",
+    "Match",
+    "Region",
+    "Point",
 ]

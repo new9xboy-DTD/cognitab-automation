@@ -1,3 +1,8 @@
+
+from dataclasses import dataclass
+
+
+@dataclass
 class Point:
     """
     Represents a point in 2D space.
@@ -7,9 +12,5 @@ class Point:
         y (int): The y-coordinate of the point.
     """
     
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-    
-    def __repr__(self):
-        return f"Point(x={self.x}, y={self.y})"
+    x: int
+    y: int
