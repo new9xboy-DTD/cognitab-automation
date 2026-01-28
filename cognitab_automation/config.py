@@ -23,15 +23,15 @@ class Config():
     
     @classmethod
     def config(cls, macro_width: int, macro_height: int, macro_dpi: int,
-               target_width: int, target_height: int, target_dpi: int):
+               target_width: int = None, target_height: int = None, target_dpi: int = None):
         """Configure the device settings and calculate scaling factors."""
         cls.MACRO_WIDTH = macro_width
         cls.MACRO_HEIGHT = macro_height
         cls.MACRO_DPI = macro_dpi
         
-        cls.TARGET_WIDTH = target_width
-        cls.TARGET_HEIGHT = target_height
-        cls.TARGET_DPI = target_dpi
+        cls.TARGET_WIDTH = target_width if target_width else macro_width
+        cls.TARGET_HEIGHT = target_height if target_height else macro_height
+        cls.TARGET_DPI = target_dpi if target_dpi else macro_dpi
         
         # Calculate scaling factor based on width and height ratios
         # scale for point, region

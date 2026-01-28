@@ -1,4 +1,4 @@
-from time import time
+import time
 from typing import Union
 import psutil, os, subprocess
 
@@ -44,7 +44,7 @@ class Device:
         if not self.ldconsole_path:
             raise RuntimeError("ldconsole_path is not set for this device.")
         
-    def tap(self, target: Union[Point, Region, tuple[int, int]]):
+    def tap(self, target: Union[Point, Region, tuple[int, int], Match]):
         """Simulate a tap on the device at coordinates (x, y)."""
         self._check_ldconsole()
         x, y = None, None
@@ -54,8 +54,10 @@ class Device:
             x, y = target.x + target.width // 2, target.y + target.height // 2
         elif isinstance(target, tuple) and len(target) == 2:
             x, y = target
+        elif isinstance(target, Match):
+            x, y = target.region.x + target.region.width // 2, target.region.y + target.region.height // 2
         else:
-            raise ValueError("Invalid target type for tap. Must be Point, Region, or (x, y) tuple.")
+            raise ValueError("Invalid target type for tap. Must be Point, Region, Match, or (x, y) tuple.")
         
         subprocess.run([
                 self.ldconsole_path, 'adb', 
@@ -96,7 +98,7 @@ class Device:
             return None
         
         if save:
-            cv2.imwrite(path or f"screenshot_device_{self.index}.png", img)
+            cv2.imwrite(path if path else f"screenshot_device_{self.index}.png", img)
         return img
     
     def find(self, region: Region, template_path: str, threshold: float = 0.7, click=False, delay=0, wait_next=100) -> Match | None:
@@ -141,10 +143,51 @@ class Device:
                     time.sleep(delay / 1000)
                 if wait_next > 0:
                     time.sleep(wait_next / 1000)
+            print(f"Template found on device {self.index} at region {match_region} with confidence {confidence:.2f}")
             return Match(region=match_region, confidence=confidence)
         else:
             return None
     
+    def global_action(self, action: str):
+        """
+        Perform a global action on the device using ldconsole.
+        Arguments:
+            action (str): The action to perform (e.g., 'HOME', 'BACK', 'MENU').
+        """
+        self._check_ldconsole()
+        key = ""
+        value = ""
+        if action.upper() == "HOME":
+            key = "call.keyboard"
+            value = "home"
+        elif action.upper() == "BACK":
+            key = "call.keyboard"
+            value = "back"
+        elif action.upper() == "MENU":
+            key = "call.keyboard"
+            value = "menu"
+        
+        subprocess.run([
+                self.ldconsole_path, 'action', 
+                '--index', str(self.index), 
+                '--key', key,
+                '--value', value
+            ],
+            capture_output=True,
+            text=True
+        )
+        print(f"Action '{action}' performed on device {self.index}")
+    
+    def plot(self, region: Region):
+        """Plot region on this device."""
+        self._check_ldconsole()
+        img = self.capture()
+        if img is None:
+            return None
+        img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
+        cv2.rectangle(img, (int(region.x * 0.5), int(region.y * 0.5)), (int((region.x + region.width) * 0.5), int((region.y + region.height) * 0.5)), (0, 255, 0), 2)
+        cv2.imshow(f"Device {self.index} - {self.name}", img)
+        cv2.waitKey(0)
     
     def __repr__(self):
         return f"Device(index={self.index}, name={self.name}, pid={self.pid}, vm_pid={self.vm_pid}, running={self.running}, adb_port={self.adb_port}, adb_port2={self.adb_port2}, width={self.width}, height={self.height}, dpi={self.dpi}, desc={self.desc})"
