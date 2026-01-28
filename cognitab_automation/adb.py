@@ -157,7 +157,7 @@ class Device:
         Arguments:
             action (str): The action to perform (e.g., 'HOME', 'BACK', 'MENU').
         """
-        self._check_ldconsole()
+        assert self.ldconsole_path, "ldconsole_path is not set for this device."
         key = ""
         value = ""
         if action.upper() == "HOME":
@@ -183,7 +183,6 @@ class Device:
     
     def plot(self, region: Region):
         """Plot region on this device."""
-        self._check_ldconsole()
         img = self.capture()
         if img is None:
             return None
