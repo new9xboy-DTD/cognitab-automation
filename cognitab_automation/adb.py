@@ -1,4 +1,4 @@
-import time
+import time, random
 from typing import Union
 import psutil, os, subprocess
 
@@ -40,13 +40,9 @@ class Device:
         self.adb_path = os.path.join(os.path.dirname(ldconsole_path), "adb.exe") if ldconsole_path else None
         self.desc = "" # Description or additional info about the device.
         
-    def _check_ldconsole(self):
-        if not self.ldconsole_path:
-            raise RuntimeError("ldconsole_path is not set for this device.")
-        
-    def tap(self, target: Union[Point, Region, tuple[int, int], Match]):
+    def tap(self, target: Union[Point, Region, tuple[int, int]]):
         """Simulate a tap on the device at coordinates (x, y)."""
-        self._check_ldconsole()
+        assert self.ldconsole_path, "ldconsole_path is not set for this device."
         x, y = None, None
         if isinstance(target, Point):
             x, y = target.x, target.y
@@ -57,7 +53,12 @@ class Device:
         elif isinstance(target, Match):
             x, y = target.region.x + target.region.width // 2, target.region.y + target.region.height // 2
         else:
-            raise ValueError("Invalid target type for tap. Must be Point, Region, Match, or (x, y) tuple.")
+            raise ValueError("Invalid target type for tap. Must be Point, Region, or (x, y) tuple.")
+        assert x is not None and y is not None
+        
+        if Config.RANDOM_PX > 0:
+            x += random.randint(-Config.RANDOM_PX, Config.RANDOM_PX)
+            y += random.randint(-Config.RANDOM_PX, Config.RANDOM_PX)
         
         subprocess.run([
                 self.ldconsole_path, 'adb', 
@@ -70,7 +71,7 @@ class Device:
         
     def swipe(self, p1: Point, p2: Point, duration_ms: int = 500):
         """Simulate a swipe on the device from point p1 to point p2 over duration_ms milliseconds."""
-        self._check_ldconsole()
+        assert self.ldconsole_path is not None, "ldconsole_path is not set for this device."
         subprocess.run([
                 self.ldconsole_path, 'adb', 
                 '--index', str(self.index), 
@@ -80,9 +81,11 @@ class Device:
             text=True
         )
     
-    def capture(self, save=False, path=None) -> np.ndarray:
+    def capture(self, save=False, path=None) -> np.ndarray | None:
         """Capture a screenshot from the device and return it as bytes."""
-        self._check_ldconsole()
+        assert self.ldconsole_path, "ldconsole_path is not set for this device."
+        if not self.adb_path:
+            raise RuntimeError("adb_path is not set for this device.")
         result = subprocess.run([
                 self.adb_path, '-s', f"emulator-{5554 + self.index * 2}",
                 "exec-out", "screencap", "-p"
@@ -124,19 +127,19 @@ class Device:
         cropped = screenshot[y:y+h, x:x+w]
         
         template = cv2.imread(template_path)
+        if not template:
+            print(f"Failed to load template image from {template_path}")
+            return None
         
         cropped = cv2.resize(cropped, (0, 0), fx=Config.SCALE, fy=Config.SCALE, interpolation=cv2.INTER_AREA)
         template = cv2.resize(template, (0, 0), fx=Config.SCALE, fy=Config.SCALE, interpolation=cv2.INTER_AREA)
-        if template is None:
-            print(f"Failed to load template image from {template_path}")
-            return None
         
         res = cv2.matchTemplate(cropped, template, cv2.TM_CCOEFF_NORMED)
         loc = np.where(res >= threshold)
         
         if len(loc[0]) > 0:
             match_region = Region(x=int(loc[1][0] / Config.SCALE) + x, y=int(loc[0][0] / Config.SCALE) + y, width=int(template.shape[1] / Config.SCALE), height=int(template.shape[0] / Config.SCALE))
-            confidence = res[loc[0][0], loc[1][0]]
+            confidence = float(res[loc[0][0], loc[1][0]])
             if click:
                 self.tap(match_region)
                 if delay > 0:
@@ -205,7 +208,7 @@ def find_ldconsole_from_process():
     
     return None
 
-def get_devices(ldconsole_path: str = None) -> list[Device]:
+def get_devices(ldconsole_path: str | None = None) -> list[Device]:
     """Return list of devices"""
     if not ldconsole_path:
         ldconsole_path = find_ldconsole_from_process()

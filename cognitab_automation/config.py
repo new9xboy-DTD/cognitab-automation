@@ -21,6 +21,8 @@ class Config():
     #use this scale for template and image matching
     SCALE = 1.0 # Scaling factor for image/template matching, default is 1.0 (no scaling)
     
+    RANDOM_PX = 0  # Random offset in pixels for click positions to simulate human behavior
+    
     @classmethod
     def config(cls, macro_width: int, macro_height: int, macro_dpi: int,
                target_width: int = None, target_height: int = None, target_dpi: int = None):
