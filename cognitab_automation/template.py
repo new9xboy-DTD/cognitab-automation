@@ -1,6 +1,6 @@
 
 import os
-
+from cognitab_automation.config import Config
 
 def build_templates(template_folder) -> dict[str, str]:
     """Build a dictionary of template names to their file paths."""

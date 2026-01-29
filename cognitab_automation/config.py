@@ -4,14 +4,14 @@ class Config():
     """A class to hold configuration settings."""
     
     # =========== Macro Device Info =============
-    MACRO_WIDTH = None  # Width of the macro device
-    MACRO_HEIGHT = None  # Height of the macro device
-    MACRO_DPI = None  # DPI of the macro device
+    MACRO_WIDTH = 0  # Width of the macro device
+    MACRO_HEIGHT = 0  # Height of the macro device
+    MACRO_DPI = 0  # DPI of the macro device
     
     # =========== Target Device Info ============
-    TARGET_WIDTH = None  # Width of the target device
-    TARGET_HEIGHT = None  # Height of the target device
-    TARGET_DPI = None  # DPI of the target device
+    TARGET_WIDTH = 0  # Width of the target device
+    TARGET_HEIGHT = 0  # Height of the target device
+    TARGET_DPI = 0  # DPI of the target device
     
     # =========== Scaling Factors =============
     # use this scale for point, region
@@ -22,10 +22,11 @@ class Config():
     SCALE = 1.0 # Scaling factor for image/template matching, default is 1.0 (no scaling)
     
     RANDOM_PX = 0  # Random offset in pixels for click positions to simulate human behavior
+    RANDOM_TIME = 0  # Random delay in milliseconds for actions to simulate human behavior
     
     @classmethod
     def config(cls, macro_width: int, macro_height: int, macro_dpi: int,
-               target_width: int = None, target_height: int = None, target_dpi: int = None):
+               target_width: int | None = None, target_height: int | None = None, target_dpi: int | None = None, random_px: int = 0, random_time: int = 0):
         """Configure the device settings and calculate scaling factors."""
         cls.MACRO_WIDTH = macro_width
         cls.MACRO_HEIGHT = macro_height
@@ -42,4 +43,10 @@ class Config():
         
         # scale for template, image matching
         if min(macro_width, macro_height) > 540:
-            cls.SCALE = 0.7
+            cls.SCALE = 1
+        else:
+            cls.SCALE = 1.0
+        
+        
+        cls.RANDOM_TIME = random_time
+        cls.RANDOM_PX = random_px

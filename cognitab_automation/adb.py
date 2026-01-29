@@ -4,7 +4,7 @@ import psutil, os, subprocess
 
 from cognitab_automation.region import Region
 from cognitab_automation.match import Match
-from .point import Point
+from cognitab_automation.point import Point
 import cv2
 import numpy as np
 from cognitab_automation.config import Config
@@ -59,6 +59,8 @@ class Device:
         if Config.RANDOM_PX > 0:
             x += random.randint(-Config.RANDOM_PX, Config.RANDOM_PX)
             y += random.randint(-Config.RANDOM_PX, Config.RANDOM_PX)
+        if Config.RANDOM_TIME > 0:
+            time.sleep(random.randint(0, Config.RANDOM_TIME) / 1000)
         
         subprocess.run([
                 self.ldconsole_path, 'adb', 
@@ -68,6 +70,9 @@ class Device:
             capture_output=True,
             text=True
         )
+        
+        if Config.RANDOM_TIME > 0:
+            time.sleep(random.randint(0, Config.RANDOM_TIME) / 1000)
         
     def swipe(self, p1: Point, p2: Point, duration_ms: int = 500):
         """Simulate a swipe on the device from point p1 to point p2 over duration_ms milliseconds."""
@@ -123,11 +128,11 @@ class Device:
             return None
         
         # Crop to the specified region
-        x, y, w, h = region.x, region.y, region.width, region.height
+        x, y, w, h = int(region.x * Config.SCALE_X), int(region.y * Config.SCALE_X), int(region.width * Config.SCALE_X), int(region.height * Config.SCALE_X)
         cropped = screenshot[y:y+h, x:x+w]
         
         template = cv2.imread(template_path)
-        if not template:
+        if template is None:
             print(f"Failed to load template image from {template_path}")
             return None
         
@@ -136,18 +141,19 @@ class Device:
         
         res = cv2.matchTemplate(cropped, template, cv2.TM_CCOEFF_NORMED)
         loc = np.where(res >= threshold)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         
-        if len(loc[0]) > 0:
-            match_region = Region(x=int(loc[1][0] / Config.SCALE) + x, y=int(loc[0][0] / Config.SCALE) + y, width=int(template.shape[1] / Config.SCALE), height=int(template.shape[0] / Config.SCALE))
-            confidence = float(res[loc[0][0], loc[1][0]])
+        if max_val > threshold:
+            match_region = Region(x=int(max_loc[0] / Config.SCALE) + x, y=int(max_loc[1] / Config.SCALE) + y, width=int(template.shape[1] / Config.SCALE), height=int(template.shape[0] / Config.SCALE))
+            confidence = max_val
             if click:
                 self.tap(match_region)
                 if delay > 0:
                     time.sleep(delay / 1000)
                 if wait_next > 0:
                     time.sleep(wait_next / 1000)
-            print(f"Template found on device {self.index} at region {match_region} with confidence {confidence:.2f}")
-            return Match(region=match_region, confidence=confidence)
+            print(f"Template {os.path.basename(template_path)} found on device {self.index} at region {match_region} with confidence {confidence:.2f}")
+            return Match(region=match_region, confidence=confidence, img=screenshot)
         else:
             return None
     
@@ -158,23 +164,19 @@ class Device:
             action (str): The action to perform (e.g., 'HOME', 'BACK', 'MENU').
         """
         assert self.ldconsole_path, "ldconsole_path is not set for this device."
-        key = ""
-        value = ""
+        key = 0
         if action.upper() == "HOME":
-            key = "call.keyboard"
-            value = "home"
+            key = 3
         elif action.upper() == "BACK":
-            key = "call.keyboard"
-            value = "back"
-        elif action.upper() == "MENU":
-            key = "call.keyboard"
-            value = "menu"
+            key = 4
+        elif action.upper() == "RECENT":
+            key = 187
+            
+        assert self.adb_path, "adb_path is not set for this device."
         
         subprocess.run([
-                self.ldconsole_path, 'action', 
-                '--index', str(self.index), 
-                '--key', key,
-                '--value', value
+                self.adb_path, '-s', f"emulator-{5554 + self.index * 2}",
+                "shell", "input", "keyevent", str(key)
             ],
             capture_output=True,
             text=True
@@ -187,7 +189,7 @@ class Device:
         if img is None:
             return None
         img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
-        cv2.rectangle(img, (int(region.x * 0.5), int(region.y * 0.5)), (int((region.x + region.width) * 0.5), int((region.y + region.height) * 0.5)), (0, 255, 0), 2)
+        cv2.rectangle(img, (int(region.x * 0.5 * Config.SCALE_X), int(region.y * 0.5 * Config.SCALE_X)), (int((region.x + region.width) * 0.5 * Config.SCALE_X), int((region.y + region.height) * 0.5 * Config.SCALE_X)), (0, 255, 0), 2)
         cv2.imshow(f"Device {self.index} - {self.name}", img)
         cv2.waitKey(0)
     
@@ -214,7 +216,7 @@ def get_devices(ldconsole_path: str | None = None) -> list[Device]:
     devices = list()
     
     if ldconsole_path:
-        print(f"LDPlayer console path: {ldconsole_path}")
+        # print(f"LDPlayer console path: {ldconsole_path}")
         
         p = subprocess.run(
             [ldconsole_path, 'list2'],
@@ -249,6 +251,4 @@ if __name__ == "__main__":
     for device in devices:
         print(device)
         if device.running:
-            img = device.capture(save=True)
-            if img is not None:
-                print(f"Captured screenshot from device {device.index}, shape: {img.shape}")
+            device.global_action("menu")

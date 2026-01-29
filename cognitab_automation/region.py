@@ -21,10 +21,10 @@ class Region():
     height: int
     
     def __post_init__(self):
-        if self.x + self.width > Config.TARGET_WIDTH:
-            self.width = self.width - (self.x + self.width - Config.TARGET_WIDTH)
-        if self.y + self.height > Config.TARGET_HEIGHT:
-            self.height = self.height - (self.y + self.height - Config.TARGET_HEIGHT)
+        if self.x + self.width > Config.MACRO_WIDTH:
+            self.width = self.width - (self.x + self.width - Config.MACRO_WIDTH)
+        if self.y + self.height > Config.MACRO_HEIGHT:
+            self.height = self.height - (self.y + self.height - Config.MACRO_HEIGHT)
             
     def left(self, percent: float = 0.5) -> "Region":
         """Resize the region to its left part by the given percentage."""
