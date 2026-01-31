@@ -16,7 +16,7 @@ class Device:
         index (int): The index of the device.
         name (str): The name of the device.
         pid (int): The process ID of the device.
-        vm_pid (int): The virtual machine process ID.
+        vm_pid (str): The virtual machine process ID.
         running (bool): Whether the device is running.
         adb_port (int): The ADB port for the device.
         adb_port2 (int): The secondary ADB port for the device.
@@ -25,11 +25,11 @@ class Device:
         dpi (int): The DPI of the device screen.
     """
     
-    def __init__(self, index, name, pid, vm_pid, running, adb_port, adb_port2, width, height, dpi, ldconsole_path=None):
+    def __init__(self, index, name, pid, vm_pid: str, running, adb_port, adb_port2, width, height, dpi, ldconsole_path=None):
         self.index = index
         self.name = name
         self.pid = pid
-        self.vm_pid = vm_pid
+        self.vm_pid = str(vm_pid)
         self.running = running
         self.adb_port = adb_port
         self.adb_port2 = adb_port2
@@ -40,7 +40,7 @@ class Device:
         self.adb_path = os.path.join(os.path.dirname(ldconsole_path), "adb.exe") if ldconsole_path else None
         self.desc = "" # Description or additional info about the device.
         
-    def tap(self, target: Union[Point, Region, tuple[int, int]]):
+    def tap(self, target: Union[Point, Region, tuple[int, int]], random_px: int = Config.RANDOM_PX):
         """Simulate a tap on the device at coordinates (x, y)."""
         assert self.ldconsole_path, "ldconsole_path is not set for this device."
         x, y = None, None
@@ -56,20 +56,28 @@ class Device:
             raise ValueError("Invalid target type for tap. Must be Point, Region, or (x, y) tuple.")
         assert x is not None and y is not None
         
-        if Config.RANDOM_PX > 0:
-            x += random.randint(-Config.RANDOM_PX, Config.RANDOM_PX)
-            y += random.randint(-Config.RANDOM_PX, Config.RANDOM_PX)
+        if random_px > 0:
+            x += random.randint(-random_px, random_px)
+            y += random.randint(-random_px, random_px)
         if Config.RANDOM_TIME > 0:
             time.sleep(random.randint(0, Config.RANDOM_TIME) / 1000)
         
         subprocess.run([
                 self.ldconsole_path, 'adb', 
                 '--index', str(self.index), 
-                '--command', f"shell input tap {x} {y}"
+                '--command', f"shell input swipe {x} {y} {x + random.choice([-1, 1]) * random.randint(5, 30)} {y + random.choice([-1, 1]) * random.randint(5, 30)} {random.randint(40, 200)}"
             ],
             capture_output=True,
             text=True
         )
+        # subprocess.run([
+        #         self.ldconsole_path, 'action',
+        #         '--index', str(self.index),
+        #         '--swipe', f"{x} {y} {x + random.choice([-1, 1]) * random.randint(5, 30)} {y + random.choice([-1, 1]) * random.randint(5, 30)} {random.randint(40, 200)}"
+        #     ],
+        #     capture_output=True,
+        #     text=True
+        # )
         
         if Config.RANDOM_TIME > 0:
             time.sleep(random.randint(0, Config.RANDOM_TIME) / 1000)
@@ -128,7 +136,7 @@ class Device:
             return None
         
         # Crop to the specified region
-        x, y, w, h = int(region.x * Config.SCALE_X), int(region.y * Config.SCALE_X), int(region.width * Config.SCALE_X), int(region.height * Config.SCALE_X)
+        x, y, w, h = int(region.x), int(region.y), int(region.width), int(region.height)
         cropped = screenshot[y:y+h, x:x+w]
         
         template = cv2.imread(template_path)
@@ -144,7 +152,7 @@ class Device:
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         
         if max_val > threshold:
-            match_region = Region(x=int(max_loc[0] / Config.SCALE) + x, y=int(max_loc[1] / Config.SCALE) + y, width=int(template.shape[1] / Config.SCALE), height=int(template.shape[0] / Config.SCALE))
+            match_region = Region(x=int(max_loc[0] / Config.SCALE) + x, y=int(max_loc[1] / Config.SCALE) + y, width=int(template.shape[1] / Config.SCALE), height=int(template.shape[0] / Config.SCALE), scale=False)
             confidence = max_val
             if click:
                 self.tap(match_region)
@@ -153,7 +161,7 @@ class Device:
                 if wait_next > 0:
                     time.sleep(wait_next / 1000)
             print(f"Template {os.path.basename(template_path)} found on device {self.index} at region {match_region} with confidence {confidence:.2f}")
-            return Match(region=match_region, confidence=confidence, img=screenshot)
+            return Match(region=match_region, confidence=confidence, img=screenshot, point=Point(x=match_region.x + match_region.width // 2, y=match_region.y + match_region.height // 2))
         else:
             return None
     
@@ -189,7 +197,7 @@ class Device:
         if img is None:
             return None
         img = cv2.resize(img, (0, 0), fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
-        cv2.rectangle(img, (int(region.x * 0.5 * Config.SCALE_X), int(region.y * 0.5 * Config.SCALE_X)), (int((region.x + region.width) * 0.5 * Config.SCALE_X), int((region.y + region.height) * 0.5 * Config.SCALE_X)), (0, 255, 0), 2)
+        cv2.rectangle(img, (int(region.x * 0.5), int(region.y * 0.5)), (int((region.x + region.width) * 0.5), int((region.y + region.height) * 0.5)), (0, 255, 0), 2)
         cv2.imshow(f"Device {self.index} - {self.name}", img)
         cv2.waitKey(0)
     
@@ -230,10 +238,10 @@ def get_devices(ldconsole_path: str | None = None) -> list[Device]:
         for device in p.stdout.strip().split("\n"):
             cols = device.split(',')
             d = Device(
-                index = int(cols[0]),
+                index = int(cols[0]) if cols[0].isdigit() else -1,
                 name = cols[1].encode('latin1').decode('utf-8'),
                 pid = int(cols[2]),
-                vm_pid = int(cols[3]),
+                vm_pid = cols[3],
                 running = cols[4] == '1',
                 adb_port = int(cols[5]),
                 adb_port2 = int(cols[6]),

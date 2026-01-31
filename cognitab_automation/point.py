@@ -1,5 +1,6 @@
 
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
+from cognitab_automation.config import Config
 
 
 @dataclass
@@ -14,3 +15,7 @@ class Point:
     
     x: int
     y: int
+    
+    def __post_init__(self):
+        self.x = int(self.x * Config.COOR_SCALE)
+        self.y = int(self.y * Config.COOR_SCALE)

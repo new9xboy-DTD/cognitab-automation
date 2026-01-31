@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from cognitab_automation.region import Region
+from cognitab_automation.point import Point
 import numpy as np
 
 @dataclass
@@ -16,3 +17,4 @@ class Match:
     region: Region
     confidence: float
     img: np.ndarray
+    point: Point

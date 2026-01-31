@@ -15,8 +15,7 @@ class Config():
     
     # =========== Scaling Factors =============
     # use this scale for point, region
-    SCALE_X = 1.0 # Scaling factor between macro and target device, default is 1.0 (no scaling)
-    SCALE_Y = 1.0 # Scaling factor between macro and target device, default is 1.0 (no scaling)
+    COOR_SCALE = 1.0  # Scaling factor for coordinates (points and regions), default is 1.0 (no scaling)
     
     #use this scale for template and image matching
     SCALE = 1.0 # Scaling factor for image/template matching, default is 1.0 (no scaling)
@@ -38,8 +37,7 @@ class Config():
         
         # Calculate scaling factor based on width and height ratios
         # scale for point, region
-        cls.SCALE_X = cls.TARGET_WIDTH / cls.MACRO_WIDTH
-        cls.SCALE_Y = cls.TARGET_HEIGHT / cls.MACRO_HEIGHT
+        cls.COOR_SCALE = min(cls.TARGET_HEIGHT, cls.TARGET_WIDTH) / min(macro_height, macro_width)
         
         # scale for template, image matching
         if min(macro_width, macro_height) > 540:
@@ -49,4 +47,4 @@ class Config():
         
         
         cls.RANDOM_TIME = random_time
-        cls.RANDOM_PX = random_px
+        cls.RANDOM_PX = random_px * int(cls.COOR_SCALE + 0.5)

@@ -1,5 +1,5 @@
 
-from dataclasses import dataclass
+from dataclasses import InitVar, dataclass
 from cognitab_automation.config import Config
 
 
@@ -7,6 +7,7 @@ from cognitab_automation.config import Config
 class Region():
     """
     Represents a rectangular region on the screen.
+    Note: Init Region after configuring Config.config(...) to ensure proper scaling.
     
     Attributes:
         x (int): The x-coordinate of the top-left corner of the region.
@@ -19,12 +20,18 @@ class Region():
     y: int
     width: int
     height: int
+    scale: InitVar[bool] = True  # Whether to apply scaling based on Config
     
-    def __post_init__(self):
+    def __post_init__(self, scale):
         if self.x + self.width > Config.MACRO_WIDTH:
             self.width = self.width - (self.x + self.width - Config.MACRO_WIDTH)
         if self.y + self.height > Config.MACRO_HEIGHT:
             self.height = self.height - (self.y + self.height - Config.MACRO_HEIGHT)
+        if scale:
+            self.x = int(self.x * Config.COOR_SCALE)
+            self.y = int(self.y * Config.COOR_SCALE)
+            self.width = int(self.width * Config.COOR_SCALE)
+            self.height = int(self.height * Config.COOR_SCALE)
             
     def left(self, percent: float = 0.5) -> "Region":
         """Resize the region to its left part by the given percentage."""
@@ -32,7 +39,8 @@ class Region():
             x=self.x,
             y=self.y,
             width=self.width - int(self.width * percent),
-            height=self.height
+            height=self.height,
+            scale = False
         )
     
     def right(self, percent: float = 0.5) -> "Region":
@@ -41,7 +49,8 @@ class Region():
             x=self.x + int(self.width * percent),
             y=self.y,
             width=int(self.width * (1 - percent)),
-            height=self.height
+            height=self.height,
+            scale = False
         )
     
     def top(self, percent: float = 0.5) -> "Region":
@@ -50,7 +59,8 @@ class Region():
             x=self.x,
             y=self.y,
             width=self.width,
-            height=int(self.height * (1 - percent))
+            height=int(self.height * (1 - percent)),
+            scale = False
         )
     
     def bottom(self, percent: float = 0.5) -> "Region":
@@ -59,7 +69,8 @@ class Region():
             x=self.x,
             y=self.y + int(self.height * percent),
             width=self.width,
-            height=int(self.height * (1 - percent))
+            height=int(self.height * (1 - percent)),
+            scale = False
         )
     
     def middle(self, percent_w: float = 0.5, percent_h: float = 0.5) -> "Region":
@@ -70,7 +81,8 @@ class Region():
             x=self.x + (self.width - new_width) // 2,
             y=self.y + (self.height - new_height) // 2,
             width=new_width,
-            height=new_height
+            height=new_height,
+            scale = False
         )
     
     @classmethod
@@ -80,7 +92,8 @@ class Region():
             x=0,
             y=0,
             width=Config.TARGET_WIDTH,
-            height=Config.TARGET_HEIGHT
+            height=Config.TARGET_HEIGHT,
+            scale = False
         )
         
         
