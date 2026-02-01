@@ -40,10 +40,10 @@ class Config():
         cls.COOR_SCALE = min(cls.TARGET_HEIGHT, cls.TARGET_WIDTH) / min(macro_height, macro_width)
         
         # scale for template, image matching
-        if min(macro_width, macro_height) > 540:
-            cls.SCALE = 1
-        else:
-            cls.SCALE = 1.0
+        # if min(macro_width, macro_height) > 540:
+        #     cls.SCALE = 1
+        # else:
+        #     cls.SCALE = 1.0
         
         
         cls.RANDOM_TIME = random_time
